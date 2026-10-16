@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "User",
+  "type": "object",
+  "required": ["id", "name", "username", "email", "address", "phone", "website", "company"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "username": { "type": "string", "minLength": 1 },
+    "email": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
+    "phone": { "type": "string" },
+    "website": { "type": "string" },
+    "address": {
+      "type": "object",
+      "required": ["street", "suite", "city", "zipcode", "geo"],
+      "properties": {
+        "street": { "type": "string" },
+        "suite": { "type": "string" },
+        "city": { "type": "string" },
+        "zipcode": { "type": "string" },
+        "geo": {
+          "type": "object",
+          "required": ["lat", "lng"],
+          "properties": {
+            "lat": { "type": "string", "pattern": "^-?\\d+(\\.\\d+)?$" },
+            "lng": { "type": "string", "pattern": "^-?\\d+(\\.\\d+)?$" }
+          }
+        }
+      }
+    },
+    "company": {
+      "type": "object",
+      "required": ["name", "catchPhrase", "bs"],
+      "properties": {
+        "name": { "type": "string" },
+        "catchPhrase": { "type": "string" },
+        "bs": { "type": "string" }
+      }
+    }
+  }
+}

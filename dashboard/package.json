@@ -1,0 +1,13 @@
+{
+  "name": "quality-metrics-dashboard",
+  "version": "1.0.0",
+  "description": "Web Automation Test Dashboard - quality metrics for every automation project",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js"
+  }
+}

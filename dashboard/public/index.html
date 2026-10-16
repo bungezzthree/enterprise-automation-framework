@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quality Metrics Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='9' width='3' height='6' rx='1' fill='%232a78d6'/%3E%3Crect x='6.5' y='5' width='3' height='10' rx='1' fill='%232a78d6'/%3E%3Crect x='12' y='1' width='3' height='14' rx='1' fill='%232a78d6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>Quality Metrics</h1>
+    <p class="muted">Automation test dashboard · Enterprise Automation Framework</p>
+  </div>
+  <div class="topbar-actions">
+    <span class="muted small" id="updated" aria-live="polite">Loading…</span>
+    <button type="button" class="btn" id="refresh" title="Reload data (auto-refreshes every 30s)">Refresh</button>
+    <button type="button" class="btn icon-btn" id="theme" title="Toggle light/dark theme" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+  <section class="filters" aria-label="Filters">
+    <label class="field">
+      <span class="field-label">Project</span>
+      <select id="projectFilter"><option value="all">All projects</option></select>
+    </label>
+    <div class="field">
+      <span class="field-label" id="catLabel">Category</span>
+      <div class="segmented" role="radiogroup" aria-labelledby="catLabel" id="categoryFilter">
+        <button type="button" role="radio" data-cat="all" aria-checked="true">All</button>
+        <button type="button" role="radio" data-cat="regression" aria-checked="false">Regression</button>
+        <button type="button" role="radio" data-cat="sanity" aria-checked="false">Sanity</button>
+        <button type="button" role="radio" data-cat="newfeature" aria-checked="false">New feature</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Key metrics"></section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Automation projects</h2>
+      <p class="muted small">Coverage = automated ÷ all test cases in TestLink. Success rate and results come from each project's latest run.</p>
+    </div>
+    <div class="table-wrap"><table class="data" id="projectsTable"></table></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head">
+        <h2>Success rate per run</h2>
+        <p class="muted small">Last 30 completed runs per project. Hover for details.</p>
+      </div>
+      <div id="trend" class="chart"></div>
+      <div id="trendLegend" class="legend"></div>
+    </section>
+    <section class="card">
+      <div class="card-head">
+        <h2>Test categories</h2>
+        <p class="muted small">Sanity is a subset of regression. Results are from the latest run.</p>
+      </div>
+      <div class="table-wrap"><table class="data" id="categoryTable"></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head row">
+      <div>
+        <h2>Test cases</h2>
+        <p class="muted small">Every case in the catalog with its most recent automated result.</p>
+      </div>
+      <div class="inline-filters">
+        <input type="search" id="tcSearch" placeholder="Search ID or title" aria-label="Search test cases">
+        <select id="tcStatus" aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="PASSED">Passed</option>
+          <option value="FAILED">Failed</option>
+          <option value="PENDING">Pending</option>
+          <option value="NOT_RUN">Not run</option>
+          <option value="MANUAL">Manual only</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap"><table class="data" id="testCaseTable"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Recent runs</h2>
+      <p class="muted small">Select a run to see its scenario results.</p>
+    </div>
+    <div class="table-wrap"><table class="data" id="runsTable"></table></div>
+  </section>
+</main>
+
+<div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

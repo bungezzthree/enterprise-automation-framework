@@ -1,0 +1,14 @@
+tc_key,title,categories,automated,priority,testlink_id
+API-001,Retrieve all posts,regression|sanity,true,high,EAF-API-1
+API-002,Retrieve a single post by id,regression|sanity,true,high,EAF-API-2
+API-003,Requesting a post that does not exist returns 404,regression,true,medium,EAF-API-3
+API-004,Filter posts by author,regression,true,medium,EAF-API-4
+API-005,Retrieve the comments of a post,regression,true,medium,EAF-API-5
+API-006,Create a new post,regression|sanity,true,high,EAF-API-6
+API-007,Replace an existing post,regression,true,medium,EAF-API-7
+API-008,Partially update a post title,newfeature,true,medium,EAF-API-8
+API-009,Delete a post,regression,true,low,EAF-API-9
+API-010,Retrieve a user profile with nested address and company,newfeature,true,medium,EAF-API-10
+API-011,Paginate posts with _page and _limit,newfeature,false,low,EAF-API-11
+API-012,Reject malformed JSON body on create,regression,false,medium,EAF-API-12
+API-013,Nested route /users/{id}/todos returns only that user's todos,regression,false,low,EAF-API-13

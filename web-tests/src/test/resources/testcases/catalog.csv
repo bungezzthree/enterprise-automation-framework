@@ -1,0 +1,16 @@
+tc_key,title,categories,automated,priority,testlink_id
+WEB-001,Standard user logs in successfully,regression|sanity,true,high,EAF-WEB-1
+WEB-002,Locked-out user is refused,regression,true,high,EAF-WEB-2
+WEB-003,Wrong password is rejected,regression,true,medium,EAF-WEB-3
+WEB-004,Username is mandatory,regression,true,medium,EAF-WEB-4
+WEB-005,Catalog lists all products with name and price,regression|sanity,true,high,EAF-WEB-5
+WEB-006,Sort products by price from low to high,newfeature,true,medium,EAF-WEB-6
+WEB-007,Add a product to the cart,regression|sanity,true,high,EAF-WEB-7
+WEB-008,Remove a product from the cart,regression,true,medium,EAF-WEB-8
+WEB-009,Complete a purchase end to end,regression|sanity,true,high,EAF-WEB-9
+WEB-010,First name is required at checkout,newfeature,true,medium,EAF-WEB-10
+WEB-011,Logout from the side menu returns to login,regression|sanity,false,high,EAF-WEB-11
+WEB-012,Reset app state clears the cart,regression,false,low,EAF-WEB-12
+WEB-013,Product detail page shows description and price,regression,false,medium,EAF-WEB-13
+WEB-014,Visual check of product images for visual_user,newfeature,false,low,EAF-WEB-14
+WEB-015,Sort products by name Z to A,newfeature,false,low,EAF-WEB-15

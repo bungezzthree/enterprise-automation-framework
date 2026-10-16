@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "CommentList",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["postId", "id", "name", "email", "body"],
+    "properties": {
+      "postId": { "type": "integer", "minimum": 1 },
+      "id": { "type": "integer", "minimum": 1 },
+      "name": { "type": "string" },
+      "email": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
+      "body": { "type": "string" }
+    },
+    "additionalProperties": false
+  }
+}

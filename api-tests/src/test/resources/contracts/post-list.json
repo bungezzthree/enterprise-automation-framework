@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "PostList",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["userId", "id", "title", "body"],
+    "properties": {
+      "userId": { "type": "integer", "minimum": 1 },
+      "id": { "type": "integer", "minimum": 1 },
+      "title": { "type": "string", "minLength": 1 },
+      "body": { "type": "string" }
+    },
+    "additionalProperties": false
+  }
+}
