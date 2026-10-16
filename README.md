@@ -47,15 +47,26 @@ On Windows use `mvnw.cmd`. If `JAVA_HOME` isn't set, point it at a JDK 21 first,
 
 The dashboard auto-refreshes every 30 s, so you can leave it open while suites run.
 
-### Useful switches (all are `-Dkey=value`, or an env var such as `BROWSER=firefox`)
+### Web run modes: headless or Google Chrome
+
+| Mode | Command | What you get |
+|---|---|---|
+| **Headless** (default) | `./mvnw -pl web-tests test` *(same as `-Pheadless`)* | No window, bundled Chromium. Use for CI and fast local runs |
+| **Google Chrome** | `./mvnw -pl web-tests test -Pchrome` | A visible window of your installed Google Chrome, so you can watch each scenario |
+
+Modes combine with every other switch, e.g. `./mvnw -pl web-tests test -Pchrome -Dcucumber.filter.tags=@sanity`
+or `-Pchrome -Dweb.engine=selenium`. Chrome mode needs Google Chrome installed. Scenarios run 3 at a time, so expect
+up to 3 Chrome windows. The dashboard's run history labels each run `(headless)` or `(headed)`.
+
+### Useful switches (all are `-Dkey=value`; most can also be set as an env var, e.g. `TEST_ENV=staging`)
 
 | Switch | Default | Purpose |
 |---|---|---|
 | `cucumber.filter.tags` | *(all)* | `@sanity`, `@regression`, `@newfeature`, `@tc:WEB-007`, `"@regression and not @wip"` |
 | `env` | `local` | Loads `config/<env>.properties` over `config/default.properties` |
 | `web.engine` | `playwright` | `playwright` or `selenium` (same page objects, same features) |
-| `browser` | `chromium` | `chromium`, `chrome`, `firefox`, `webkit` (Playwright), `edge` |
-| `headless` | `true` | `false` to watch the browser |
+| `browser` | set by run mode | Overrides the mode's browser: `chromium`, `chrome`, `firefox`, `webkit` (Playwright), `edge` |
+| `headless` | set by run mode | Overrides the mode's headless flag (`true` / `false`) |
 | `selenium.grid.url` | - | Run Selenium on a Grid instead of a local browser |
 | `results.db.url` | `jdbc:sqlite:<repo>/results/automation-results.db` | Where results are published |
 | `results.db.enabled` | `true` | `false` for throw-away runs that shouldn't affect metrics |
@@ -65,7 +76,7 @@ Examples:
 
 ```bash
 ./mvnw -pl web-tests test -Dcucumber.filter.tags=@sanity
-./mvnw -pl web-tests test -Dweb.engine=selenium -Dbrowser=chrome -Dheadless=false
+./mvnw -pl web-tests test -Dbrowser=firefox
 ```
 
 Every run also produces Cucumber HTML/JSON/JUnit reports in `<module>/target/cucumber-reports/`
@@ -135,7 +146,7 @@ dashboard's `node:sqlite` for `pg`. *(Not done or tested in phase 1.)*
 
 ## Jenkins
 
-`Jenkinsfile` is a parameterised pipeline: `SUITE` (all/api/web), `TAGS`, `TEST_ENV`, `WEB_ENGINE`, `BROWSER`, `RESULTS_DB_URL`,
+`Jenkinsfile` is a parameterised pipeline: `SUITE` (all/api/web), `TAGS`, `TEST_ENV`, `WEB_ENGINE`, `RUN_MODE` (headless/chrome), `RESULTS_DB_URL`,
 `TESTLINK`. It builds the core, runs the API and Web suites **in parallel**, publishes JUnit results, archives the Cucumber reports,
 and runs a nightly regression (`H 2 * * 1-5`). It works on Linux (`sh`) and Windows (`bat`) agents.
 

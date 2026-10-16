@@ -24,7 +24,8 @@ public record RunInfo(Instant startedAt, String environment, String triggerSourc
         return switch (Config.get("project.type", "WEB").toUpperCase()) {
             case "API" -> "rest-assured";
             case "MOBILE" -> "appium/" + Config.get("mobile.platform", "android");
-            default -> Config.get("web.engine", "playwright") + "/" + Config.get("browser", "chromium");
+            default -> Config.get("web.engine", "playwright") + "/" + Config.get("browser", "chromium")
+                    + (Config.getBool("headless", true) ? " (headless)" : " (headed)");
         };
     }
 }

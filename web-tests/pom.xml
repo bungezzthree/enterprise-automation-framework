@@ -26,7 +26,39 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables combine.children="append">
+                        <browser>${browser}</browser>
+                        <headless>${headless}</headless>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <!--
+        Run modes:
+          mvnw -pl web-tests test              headless Chromium (default, CI-friendly)
+          mvnw -pl web-tests test -Pchrome     visible Google Chrome window (installed Chrome)
+        -Dbrowser / -Dheadless on the command line still override either mode.
+    -->
+    <profiles>
+        <profile>
+            <id>headless</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <browser>chromium</browser>
+                <headless>true</headless>
+            </properties>
+        </profile>
+        <profile>
+            <id>chrome</id>
+            <properties>
+                <browser>chrome</browser>
+                <headless>false</headless>
+            </properties>
+        </profile>
+    </profiles>
 </project>

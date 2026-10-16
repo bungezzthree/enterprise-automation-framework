@@ -9,7 +9,7 @@ pipeline {
         string(name: 'TAGS', defaultValue: '', description: 'Cucumber tag expression, e.g. "@sanity" or "@regression and not @wip" (empty = everything)')
         choice(name: 'TEST_ENV', choices: ['local', 'staging', 'production'], description: 'Loads config/<env>.properties')
         choice(name: 'WEB_ENGINE', choices: ['playwright', 'selenium'], description: 'Browser automation engine for web suites')
-        choice(name: 'BROWSER', choices: ['chromium', 'chrome', 'firefox', 'webkit', 'edge'], description: 'Browser for web suites')
+        choice(name: 'RUN_MODE', choices: ['headless', 'chrome'], description: 'Web suites: headless Chromium, or a visible Google Chrome window (agent needs Chrome and a desktop session)')
         string(name: 'RESULTS_DB_URL', defaultValue: '', description: 'JDBC URL of the dashboard DB (empty = <workspace>/results/automation-results.db)')
         booleanParam(name: 'TESTLINK', defaultValue: false, description: 'Also push results to TestLink (needs TESTLINK_DEVKEY credential)')
     }
@@ -48,7 +48,7 @@ pipeline {
                     when { expression { params.SUITE in ['all', 'web'] } }
                     steps {
                         script {
-                            mvn("-B -pl web-tests test ${commonArgs()} -Dweb.engine=${params.WEB_ENGINE} -Dbrowser=${params.BROWSER} -Dheadless=true")
+                            mvn("-B -pl web-tests test ${commonArgs()} -Dweb.engine=${params.WEB_ENGINE} -P${params.RUN_MODE}")
                         }
                     }
                 }
