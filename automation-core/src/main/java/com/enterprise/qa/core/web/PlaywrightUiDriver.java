@@ -8,6 +8,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.WaitUntilState;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ public class PlaywrightUiDriver implements UiDriver {
     private final int timeoutMs;
     private final String browserName;
 
-    public PlaywrightUiDriver(String browserName, boolean headless, String baseUrl, int timeoutMs) {
+    public PlaywrightUiDriver(String browserName, boolean headless, String baseUrl, int timeoutMs, int navigationTimeoutMs) {
         this.browserName = browserName;
         this.baseUrl = baseUrl;
         this.timeoutMs = timeoutMs;
@@ -38,12 +39,15 @@ public class PlaywrightUiDriver implements UiDriver {
         this.browser = type.launch(options);
         this.context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1366, 768));
         this.context.setDefaultTimeout(timeoutMs);
+        this.context.setDefaultNavigationTimeout(navigationTimeoutMs);
         this.page = context.newPage();
     }
 
+    /** Waits for DOMContentLoaded, not "load": slow third-party scripts must not fail a navigation. */
     @Override
     public void open(String pathOrUrl) {
-        page.navigate(WebUrls.resolve(baseUrl, pathOrUrl));
+        page.navigate(WebUrls.resolve(baseUrl, pathOrUrl),
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
     }
 
     @Override

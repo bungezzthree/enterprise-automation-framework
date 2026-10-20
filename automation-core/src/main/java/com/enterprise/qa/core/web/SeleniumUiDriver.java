@@ -3,6 +3,7 @@ package com.enterprise.qa.core.web;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -35,11 +36,13 @@ public class SeleniumUiDriver implements UiDriver {
     private final String baseUrl;
     private final String browserName;
 
-    public SeleniumUiDriver(String browserName, boolean headless, String baseUrl, int timeoutMs, String gridUrl) {
+    public SeleniumUiDriver(String browserName, boolean headless, String baseUrl, int timeoutMs,
+                            int navigationTimeoutMs, String gridUrl) {
         this.browserName = browserName;
         this.baseUrl = baseUrl;
         this.driver = create(browserName.toLowerCase(), headless, gridUrl);
         this.driver.manage().window().setSize(new Dimension(1366, 768));
+        this.driver.manage().timeouts().pageLoadTimeout(Duration.ofMillis(navigationTimeoutMs));
         this.wait = new WebDriverWait(driver, Duration.ofMillis(timeoutMs));
     }
 
@@ -73,6 +76,8 @@ public class SeleniumUiDriver implements UiDriver {
                 yield o;
             }
         };
+        // Return at DOMContentLoaded, like the Playwright driver; element waits cover the rest.
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
         if (gridUrl != null) {
             try {
                 return new RemoteWebDriver(URI.create(gridUrl).toURL(), options);
