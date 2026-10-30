@@ -1,0 +1,30 @@
+--- a/src/automation/service.js	2026-10-20 16:53:23.091618300 +0700
++++ b/src/automation/service.js	2026-10-30 14:14:44.782702200 +0700
+@@ -73,11 +73,15 @@
+ 
+         let existing = get('SELECT id FROM test_cases WHERE project_id = ? AND automation_ref = ?', project.id, ref);
+         let linked = false;
++        let newKey = null;
+         if (!existing && s(c.case_key)) {
+           existing = get('SELECT id, automation_ref FROM test_cases WHERE project_id = ? AND case_key = ?', project.id, s(c.case_key));
+-          if (!existing) throw new HttpError(404, `case_key "${c.case_key}" not found in this project`);
+-          if (existing.automation_ref && existing.automation_ref !== ref) throw new HttpError(409, `${c.case_key} is already linked to ${existing.automation_ref}`);
+-          linked = true;
++          if (!existing) {
++            newKey = s(c.case_key); // unknown key: create the test case under the caller's own ID
++          } else {
++            if (existing.automation_ref && existing.automation_ref !== ref) throw new HttpError(409, `${c.case_key} is already linked to ${existing.automation_ref}`);
++            linked = true;
++          }
+         }
+ 
+         const suitePath = s(c.suite, 500) || null;
+@@ -87,7 +91,7 @@
+         if (!existing) {
+           const title = s(c.title, 300) || ref.split(/[#.]/).pop();
+           const data = normalizeCase({ ...c, title, execution_type: 'Automated', status: c.status || 'Ready', automation_ref: ref });
+-          const id = createCase(targetSuite(), data, normalizeSteps(c.steps), userId);
++          const id = createCase(targetSuite(), data, normalizeSteps(c.steps), userId, newKey);
+           out.created++;
+           out.cases.push({ automation_ref: ref, case_key: getCase(id).case_key, action: 'created' });
+           return;

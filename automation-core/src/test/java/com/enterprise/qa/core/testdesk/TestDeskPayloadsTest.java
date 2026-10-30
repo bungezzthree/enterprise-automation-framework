@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TestDeskPayloadsTest {
 
     private static ScenarioRecord record(String key, String status, long ms, String message, String... tags) {
-        return new ScenarioRecord(key, "Scenario " + key, List.of(tags),
+        return new ScenarioRecord(key, "Scenario " + key, "Posts read", List.of(tags),
                 List.of(new StepText("Given ", "a precondition"), new StepText("When ", "I act"), new StepText("Then ", "it works")),
                 status, ms, message, null, List.of());
     }
@@ -69,7 +69,7 @@ class TestDeskPayloadsTest {
     @Test
     void syncBodyCarriesKeyTitlePriorityTagsAndSteps() {
         ScenarioRecord r = record("API-011", "PASSED", 100, null, "@api", "@tc:API-011", "@newfeature", "@priority:low", "@req:FSD-9");
-        JsonObject body = TestDeskPayloads.syncBody(List.of(r), "Automation", false);
+        JsonObject body = TestDeskPayloads.syncBody(List.of(r), "Automation", false, true, false);
         assertThat(body.get("suite_root").getAsString()).isEqualTo("Automation");
         assertThat(body.get("obsolete_missing").getAsBoolean()).isFalse();
         JsonObject c = body.getAsJsonArray("cases").get(0).getAsJsonObject();
@@ -80,6 +80,41 @@ class TestDeskPayloadsTest {
         assertThat(c.get("tags").getAsString()).isEqualTo("api,newfeature");
         assertThat(c.get("requirement_ref").getAsString()).isEqualTo("FSD-9");
         assertThat(c.getAsJsonArray("steps")).hasSize(2);
+    }
+
+    @Test
+    void newTestCasesAreSyncedWithoutCaseKeyAndUnderAFeatureSuite() {
+        ScenarioRecord r = record("API-011", "PASSED", 100, null, "@api", "@tc:API-011");
+        JsonObject c = TestDeskPayloads.syncBody(List.of(r), "Automation", false, false, true).getAsJsonArray("cases").get(0).getAsJsonObject();
+        assertThat(c.has("case_key")).isFalse();
+        assertThat(c.get("automation_ref").getAsString()).isEqualTo("API-011");
+        assertThat(c.get("suite").getAsString()).isEqualTo("Posts read");
+    }
+
+    @Test
+    void existingTestCasesAreNeverMovedBecauseNoSuiteIsSentWhenLinking() {
+        ScenarioRecord r = record("API-011", "PASSED", 100, null, "@tc:API-011");
+        JsonObject c = TestDeskPayloads.syncBody(List.of(r), "Automation", false, true, false).getAsJsonArray("cases").get(0).getAsJsonObject();
+        assertThat(c.has("suite")).isFalse();
+        assertThat(c.get("case_key").getAsString()).isEqualTo("API-011");
+    }
+
+    @Test
+    void resultsCanCarryTitleTagsAndPriorityWhenTheyMayCreateCases() {
+        ScenarioRecord r = record("API-011", "PASSED", 100, null, "@api", "@tc:API-011", "@priority:high");
+        JsonObject body = TestDeskPayloads.resultsBody(List.of(r), new RunContext("p", "SIT", null, null, "r"), false, true);
+        JsonObject item = body.getAsJsonArray("results").get(0).getAsJsonObject();
+        assertThat(body.get("auto_create_cases").getAsBoolean()).isTrue();
+        assertThat(item.get("title").getAsString()).isEqualTo("Scenario API-011");
+        assertThat(item.get("tags").getAsString()).isEqualTo("api");
+        assertThat(item.get("priority").getAsString()).isEqualTo("High");
+    }
+
+    @Test
+    void featureTitleComesFromTheFileName() {
+        assertThat(TestDeskPayloads.featureTitle("classpath:features/posts_read.feature")).isEqualTo("Posts read");
+        assertThat(TestDeskPayloads.featureTitle("features/user-profile.feature")).isEqualTo("User profile");
+        assertThat(TestDeskPayloads.featureTitle(null)).isEmpty();
     }
 
     @Test
@@ -114,10 +149,19 @@ class TestDeskPayloadsTest {
 
     @Test
     void longOutputIsTruncated() {
-        ScenarioRecord r = new ScenarioRecord("API-001", "n", List.of(), List.of(), "FAILED", 1, "m", "x".repeat(30_000), List.of());
+        ScenarioRecord r = new ScenarioRecord("API-001", "n", "", List.of(), List.of(), "FAILED", 1, "m", "x".repeat(30_000), List.of());
         JsonObject body = TestDeskPayloads.resultsBody(List.of(r), new RunContext("p", "SIT", null, null, "r"), false);
         String output = body.getAsJsonArray("results").get(0).getAsJsonObject().get("output").getAsString();
         assertThat(output).startsWith("xxx").contains("dipotong").hasSizeLessThan(20_100);
+    }
+
+    @Test
+    void recordsAreSortedByKeySoParallelRunsGiveStableNumbering() {
+        List<ScenarioRecord> sorted = TestDeskPayloads.mergeByKey(List.of(
+                record("WEB-003", "PASSED", 1, null, "@tc:WEB-003"),
+                record("WEB-001", "PASSED", 1, null, "@tc:WEB-001"),
+                record("WEB-002", "PASSED", 1, null, "@tc:WEB-002")));
+        assertThat(sorted).extracting(ScenarioRecord::key).containsExactly("WEB-001", "WEB-002", "WEB-003");
     }
 
     @Test

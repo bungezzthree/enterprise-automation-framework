@@ -75,13 +75,16 @@ public class TestDeskClient {
 
     /**
      * {@code POST /api/plans/{planId}/automation/evidence}: attach files to the latest result of a test case.
-     * Uses {@code case_key} (design decision D5). Not retried, to avoid duplicate attachments.
+     *
+     * @param idField {@code automation_ref} or {@code case_key}: how the test case is identified
+     *
+     * <p>Not retried, to avoid duplicate attachments.</p>
      */
-    public JsonObject uploadEvidence(long planId, String caseKey, String runId, List<ScenarioRecord.Evidence> files)
+    public JsonObject uploadEvidence(long planId, String idField, String idValue, String runId, List<ScenarioRecord.Evidence> files)
             throws IOException, InterruptedException {
         String boundary = "----eaf" + UUID.randomUUID().toString().replace("-", "");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        field(out, boundary, "case_key", caseKey);
+        field(out, boundary, idField, idValue);
         if (runId != null) {
             field(out, boundary, "run_id", runId);
         }

@@ -19,7 +19,7 @@ Framework memakai TestDesk (`C:\Users\solui\IdeaProjects\test-management-tools`)
 |---|---|---|
 | D1 | **`@tc:<ID>` = `case_key` TestDesk.** Prefix project TestDesk = `API`, `WEB`, `MOB`. | Diverifikasi: impor CSV mempertahankan ID kustom, jadi satu ID di seluruh feature, katalog, dashboard, dan TestDesk. |
 | D2 | **Kirim di akhir run (`TestRunFinished`)**, bukan per scenario. | Satu sinkron, satu pengiriman hasil, satu plan. Aman untuk eksekusi paralel (Web memakai 3 thread). Hasil per scenario tetap tersimpan langsung oleh `DbResultPublisher`. |
-| D3 | **`auto_create_cases: false`.** | Diverifikasi di kode TestDesk: defaultnya `true`, dan test case yang dibuat otomatis mendapat ID TestDesk sendiri (`API-1`), bukan ID kita. |
+| D3 | **Test case yang belum ada dibuat lewat sinkron spesifikasi, bukan lewat pengiriman hasil** (`testdesk.auto.create=true`, diubah 2026-10-30 atas permintaan pengguna; semula mati). | Sinkron membawa langkah Gherkin dan suite per feature. Konsekuensi: TestDesk memberi ID sendiri (`API-1`) kecuali TestDesk dipatch, lihat bagian 12. |
 | D4 | **Kirim `automation_ref` dan `case_key` sama-sama berisi `@tc`.** | Sinkron pertama menghubungkan (`linked`) test case hasil impor; setelah itu cocok lewat `automation_ref`. |
 | D5 | **Evidence diunggah memakai `case_key`** (bukan `automation_ref`). | Percobaan dengan `automation_ref` gagal 404 untuk test case yang baru terhubung lewat `case_key`. |
 | D6 | **Mode evidence: `none`, `failed` (default), `all`.** | UAT biasanya butuh bukti walau test lulus, jadi `all` tersedia untuk plan UAT. |
@@ -118,6 +118,7 @@ Contoh payload sinkron untuk API-011 (struktur diverifikasi pada instance uji):
 | `testdesk.plan.name` | `EAF <project.key> <env>` | Nama plan bergulir; bisa diisi per build (`Release 2.4 #123`) |
 | `testdesk.run.id` | `BUILD_TAG`, atau `local-<user>-<waktu>` | Kunci idempotensi: kirim ulang tidak menggandakan |
 | `testdesk.build` / `testdesk.ci.url` | `BUILD_NUMBER` / `BUILD_URL` | Muncul di tiap eksekusi |
+| `testdesk.auto.create` | `true` | Test case yang belum ada di TestDesk dibuat otomatis; `false` hanya melaporkannya. Perlu `testdesk.sync.spec=true` (bila sinkron mati, pembuatan dilakukan oleh pengiriman hasil, tanpa langkah) |
 | `testdesk.sync.spec` | `true` | `false` bila judul dan langkah test case dikelola manual di TestDesk |
 | `testdesk.dry.run` | `false` | Meneruskan `dry_run` ke API: lihat hasil tanpa menyimpan |
 | `evidence.mode` | `failed` | `none`, `failed`, `all` |
@@ -188,3 +189,16 @@ Peluang di luar rencana: generator AI TestDesk (Claude atau model open-source) s
 | K3 | Nama plan | Bergulir per project dan environment; untuk rilis diisi manual |
 | K4 | Pemetaan environment | `local` dan `staging` jadi `SIT`; `UAT` hanya bila diatur eksplisit |
 | K5 | Kode TestLink | Dihapus (riwayat git menyimpannya) |
+
+## 12. Pembaruan: test case dibuat otomatis bila belum ada
+
+Perilaku yang diminta untuk demo pilot (20 test case): **belum ada di TestDesk → masuk Test Specification; sudah ada → hanya hasil eksekusi pada test plan yang diperbarui.**
+
+Cara kerja (`TestDeskReporter`):
+1. Putaran 1: sinkron dengan `case_key` = `@tc`. Yang sudah ada **dihubungkan** (tidak diduplikasi, tidak dipindah suite, ID asli dipertahankan); yang sudah terhubung menjadi `unchanged`/`updated`.
+2. Putaran 2 (hanya yang dijawab TestDesk "not found in this project"): dibuat **tanpa** `case_key`, dengan langkah Gherkin dan suite bernama feature (`Automation / Posts read`).
+3. Hasil dicatat pada plan; evidence diunggah (`automation_ref`, cadangan `case_key`).
+
+Diverifikasi terhadap TestDesk asli (instance sementara): project kosong → 10 API + 10 Web dibuat dan hasilnya tercatat; run kedua → 0 baru, eksekusi bertambah pada plan yang sama; kasus campuran (4 sudah ada, 6 belum) → 4 terhubung, 6 dibuat, tanpa duplikat.
+
+**Catatan ID.** TestDesk yang ada memberi nomor sendiri pada test case baru (`API-1`, tertaut ke `automation_ref` `API-001`). Agar ID identik, `docs/testdesk-keep-case-key.patch` (7 baris di `src/automation/service.js` TestDesk) membuat TestDesk memakai `case_key` yang diminta saat membuat. Diuji pada **salinan** TestDesk: hasilnya `API-001` … `API-010`. Dengan patch itu test case baru berada langsung di suite `Automation` (tanpa folder per feature), karena suite hanya dikirim pada putaran pembuatan. Patch belum diterapkan ke repo TestDesk.

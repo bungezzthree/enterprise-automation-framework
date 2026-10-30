@@ -80,7 +80,7 @@ class TestDeskClientTest {
     void evidenceIsSentAsMultipartWithCaseKeyRunIdAndFile(@TempDir Path dir) throws Exception {
         Path shot = Files.writeString(dir.resolve("shot.txt"), "PIXELS");
         answer = "{\"ok\":true,\"files\":1}";
-        client.uploadEvidence(7, "API-012", "run-1", List.of(new ScenarioRecord.Evidence("failure-screenshot.png", "image/png", shot)));
+        client.uploadEvidence(7, "case_key", "API-012", "run-1", List.of(new ScenarioRecord.Evidence("failure-screenshot.png", "image/png", shot)));
         Received r = received.get(0);
         assertThat(r.path()).isEqualTo("/api/plans/7/automation/evidence");
         assertThat(r.contentType()).startsWith("multipart/form-data; boundary=");
@@ -116,7 +116,7 @@ class TestDeskClientTest {
     void evidenceUploadIsNeverRetried(@TempDir Path dir) throws Exception {
         Path f = Files.writeString(dir.resolve("a.txt"), "x");
         status.set(503);
-        assertThatThrownBy(() -> client.uploadEvidence(1, "API-1", null, List.of(new ScenarioRecord.Evidence("a.txt", "text/plain", f))))
+        assertThatThrownBy(() -> client.uploadEvidence(1, "case_key", "API-1", null, List.of(new ScenarioRecord.Evidence("a.txt", "text/plain", f))))
                 .isInstanceOf(TestDeskException.class);
         assertThat(received).hasSize(1);
     }

@@ -111,7 +111,10 @@ public final class TestDeskPayloads {
         for (ScenarioRecord r : records) {
             merged.merge(r.key(), r, TestDeskPayloads::combine);
         }
-        return new ArrayList<>(merged.values());
+        // Parallel runs finish in random order; sorting keeps TestDesk's own numbering in the order of our @tc IDs.
+        List<ScenarioRecord> sorted = new ArrayList<>(merged.values());
+        sorted.sort(java.util.Comparator.comparing(ScenarioRecord::key));
+        return sorted;
     }
 
     private static ScenarioRecord combine(ScenarioRecord a, ScenarioRecord b) {
@@ -119,7 +122,7 @@ public final class TestDeskPayloads {
         ScenarioRecord worse = bWorse ? b : a;
         List<ScenarioRecord.Evidence> evidence = new ArrayList<>(a.evidence());
         evidence.addAll(b.evidence());
-        return new ScenarioRecord(a.key(), a.name(), a.tags(), a.steps(), worse.status(), a.durationMs() + b.durationMs(),
+        return new ScenarioRecord(a.key(), a.name(), a.feature(), a.tags(), a.steps(), worse.status(), a.durationMs() + b.durationMs(),
                 worse.message() != null ? worse.message() : a.message(), worse.output() != null ? worse.output() : a.output(), evidence);
     }
 
@@ -132,14 +135,26 @@ public final class TestDeskPayloads {
         };
     }
 
-    /** Body for {@code PUT /api/projects/{prefix}/automation/cases}. */
-    public static JsonObject syncBody(List<ScenarioRecord> records, String suiteRoot, boolean dryRun) {
+    /**
+     * Body for {@code PUT /api/projects/{prefix}/automation/cases}.
+     *
+     * @param linkByCaseKey true to send {@code case_key} so an existing manual test case is linked (TestDesk answers
+     *                      "not found" for keys it does not have); false to let TestDesk create a new test case
+     * @param withSuite     true to put new test cases under a suite named after the feature (never use it for
+     *                      existing cases: TestDesk would move them)
+     */
+    public static JsonObject syncBody(List<ScenarioRecord> records, String suiteRoot, boolean dryRun, boolean linkByCaseKey, boolean withSuite) {
         JsonArray cases = new JsonArray();
         for (ScenarioRecord r : records) {
             JsonObject c = new JsonObject();
             c.addProperty("automation_ref", r.key());
-            c.addProperty("case_key", r.key());
+            if (linkByCaseKey) {
+                c.addProperty("case_key", r.key());
+            }
             c.addProperty("title", r.name());
+            if (withSuite && r.feature() != null && !r.feature().isBlank()) {
+                c.addProperty("suite", r.feature());
+            }
             priority(r.tags()).ifPresent(p -> c.addProperty("priority", p));
             String tags = tags(r.tags());
             if (!tags.isEmpty()) {
@@ -157,8 +172,16 @@ public final class TestDeskPayloads {
         return body;
     }
 
-    /** Body for {@code POST /api/projects/{prefix}/automation/results}. Never auto-creates cases (design decision D3). */
+    /** Body for {@code POST /api/projects/{prefix}/automation/results}; cases are created by the spec sync, not here. */
     public static JsonObject resultsBody(List<ScenarioRecord> records, RunContext run, boolean dryRun) {
+        return resultsBody(records, run, dryRun, false);
+    }
+
+    /**
+     * Same, with {@code autoCreateCases} as a fallback for runs without a spec sync: TestDesk then creates a missing
+     * test case from the title, tags and priority carried by each result.
+     */
+    public static JsonObject resultsBody(List<ScenarioRecord> records, RunContext run, boolean dryRun, boolean autoCreateCases) {
         JsonArray results = new JsonArray();
         for (ScenarioRecord r : records) {
             JsonObject item = new JsonObject();
@@ -173,6 +196,14 @@ public final class TestDeskPayloads {
                 item.addProperty("output", truncate(r.output(), MAX_OUTPUT_CHARS));
             }
             tagValue(r.tags(), "@defect:").ifPresent(v -> item.addProperty("defect_ref", v));
+            if (autoCreateCases) {
+                item.addProperty("title", r.name());
+                String tags = tags(r.tags());
+                if (!tags.isEmpty()) {
+                    item.addProperty("tags", tags);
+                }
+                priority(r.tags()).ifPresent(p -> item.addProperty("priority", p));
+            }
             results.add(item);
         }
         JsonObject plan = new JsonObject();
@@ -190,10 +221,21 @@ public final class TestDeskPayloads {
             body.addProperty("ci_url", run.ciUrl());
         }
         body.addProperty("run_id", run.runId());
-        body.addProperty("auto_create_cases", false);
+        body.addProperty("auto_create_cases", autoCreateCases);
         body.addProperty("dry_run", dryRun);
         body.add("results", results);
         return body;
+    }
+
+    /** {@code classpath:features/posts_read.feature} to {@code "Posts read"}. */
+    public static String featureTitle(String uriPath) {
+        if (uriPath == null) {
+            return "";
+        }
+        String file = uriPath.substring(uriPath.lastIndexOf('/') + 1);
+        int dot = file.lastIndexOf('.');
+        String base = (dot > 0 ? file.substring(0, dot) : file).replace('_', ' ').replace('-', ' ').trim();
+        return base.isEmpty() ? "" : Character.toUpperCase(base.charAt(0)) + base.substring(1);
     }
 
     static String truncate(String text, int max) {
