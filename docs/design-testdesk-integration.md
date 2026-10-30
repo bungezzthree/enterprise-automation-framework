@@ -66,7 +66,7 @@ Setiap run (testdesk.enabled=true)
 Contoh payload sinkron untuk API-011 (struktur diverifikasi pada instance uji):
 
 ```json
-{ "suite_root": "Automation", "cases": [ {
+{ "suite_root": "", "cases": [ {
     "automation_ref": "API-011", "case_key": "API-011",
     "title": "Paginate posts with _page and _limit",
     "priority": "Low", "tags": "newfeature,posts,api",
@@ -118,6 +118,7 @@ Contoh payload sinkron untuk API-011 (struktur diverifikasi pada instance uji):
 | `testdesk.plan.name` | `EAF <project.key> <env>` | Nama plan bergulir; bisa diisi per build (`Release 2.4 #123`) |
 | `testdesk.run.id` | `BUILD_TAG`, atau `local-<user>-<waktu>` | Kunci idempotensi: kirim ulang tidak menggandakan |
 | `testdesk.build` / `testdesk.ci.url` | `BUILD_NUMBER` / `BUILD_URL` | Muncul di tiap eksekusi |
+| `testdesk.suite.root` | *(kosong)* | Folder opsional di atas suite modul. Kosong: test case langsung masuk suite modul (nama feature); jenis otomatis/manual sudah ada di Execution Type |
 | `testdesk.auto.create` | `true` | Test case yang belum ada di TestDesk dibuat otomatis; `false` hanya melaporkannya. Perlu `testdesk.sync.spec=true` (bila sinkron mati, pembuatan dilakukan oleh pengiriman hasil, tanpa langkah) |
 | `testdesk.sync.spec` | `true` | `false` bila judul dan langkah test case dikelola manual di TestDesk |
 | `testdesk.dry.run` | `false` | Meneruskan `dry_run` ke API: lihat hasil tanpa menyimpan |
@@ -196,9 +197,9 @@ Perilaku yang diminta untuk demo pilot (20 test case): **belum ada di TestDesk �
 
 Cara kerja (`TestDeskReporter`):
 1. Putaran 1: sinkron dengan `case_key` = `@tc`. Yang sudah ada **dihubungkan** (tidak diduplikasi, tidak dipindah suite, ID asli dipertahankan); yang sudah terhubung menjadi `unchanged`/`updated`.
-2. Putaran 2 (hanya yang dijawab TestDesk "not found in this project"): dibuat **tanpa** `case_key`, dengan langkah Gherkin dan suite bernama feature (`Automation / Posts read`).
+2. Putaran 2 (hanya yang dijawab TestDesk "not found in this project"): dibuat **tanpa** `case_key`, dengan langkah Gherkin dan suite bernama feature/modul (`Posts read`, tanpa folder pembungkus).
 3. Hasil dicatat pada plan; evidence diunggah (`automation_ref`, cadangan `case_key`).
 
 Diverifikasi terhadap TestDesk asli (instance sementara): project kosong → 10 API + 10 Web dibuat dan hasilnya tercatat; run kedua → 0 baru, eksekusi bertambah pada plan yang sama; kasus campuran (4 sudah ada, 6 belum) → 4 terhubung, 6 dibuat, tanpa duplikat.
 
-**Catatan ID.** TestDesk yang ada memberi nomor sendiri pada test case baru (`API-1`, tertaut ke `automation_ref` `API-001`). Agar ID identik, `docs/testdesk-keep-case-key.patch` (7 baris di `src/automation/service.js` TestDesk) membuat TestDesk memakai `case_key` yang diminta saat membuat. Diuji pada **salinan** TestDesk: hasilnya `API-001` … `API-010`. Dengan patch itu test case baru berada langsung di suite `Automation` (tanpa folder per feature), karena suite hanya dikirim pada putaran pembuatan. Patch belum diterapkan ke repo TestDesk.
+**Catatan ID.** TestDesk yang ada memberi nomor sendiri pada test case baru (`API-1`, tertaut ke `automation_ref` `API-001`). Agar ID identik, `docs/testdesk-keep-case-key.patch` (7 baris di `src/automation/service.js` TestDesk) membuat TestDesk memakai `case_key` yang diminta saat membuat. Diuji pada **salinan** TestDesk: hasilnya `API-001` … `API-010`. Dengan patch itu test case baru berada langsung di suite `Automation` (bukan suite modul), karena suite hanya dikirim pada putaran pembuatan; ini perlu disempurnakan bila patch dipakai. Patch belum diterapkan ke repo TestDesk.

@@ -148,7 +148,7 @@ public class TestDeskResultListener implements ConcurrentEventListener {
         }
         String project = Config.require("testdesk.project");
         String url = Config.require("testdesk.url");
-        TestDeskReporter.Settings settings = new TestDeskReporter.Settings(project, url, "Automation",
+        TestDeskReporter.Settings settings = new TestDeskReporter.Settings(project, url, Config.get("testdesk.suite.root", ""),
                 Config.getBool("testdesk.sync.spec", true), Config.getBool("testdesk.auto.create", true),
                 Config.getBool("testdesk.dry.run", false), evidenceMode,
                 (long) Config.getInt("testdesk.evidence.max.mb", 20) * 1024 * 1024, Path.of("target", "testdesk"));

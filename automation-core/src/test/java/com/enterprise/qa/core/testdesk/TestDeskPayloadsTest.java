@@ -102,12 +102,24 @@ class TestDeskPayloadsTest {
     @Test
     void resultsCanCarryTitleTagsAndPriorityWhenTheyMayCreateCases() {
         ScenarioRecord r = record("API-011", "PASSED", 100, null, "@api", "@tc:API-011", "@priority:high");
-        JsonObject body = TestDeskPayloads.resultsBody(List.of(r), new RunContext("p", "SIT", null, null, "r"), false, true);
+        JsonObject body = TestDeskPayloads.resultsBody(List.of(r), new RunContext("p", "SIT", null, null, "r"), false, true, "");
         JsonObject item = body.getAsJsonArray("results").get(0).getAsJsonObject();
         assertThat(body.get("auto_create_cases").getAsBoolean()).isTrue();
         assertThat(item.get("title").getAsString()).isEqualTo("Scenario API-011");
         assertThat(item.get("tags").getAsString()).isEqualTo("api");
         assertThat(item.get("priority").getAsString()).isEqualTo("High");
+        assertThat(item.get("suite").getAsString()).isEqualTo("Posts read");
+        assertThat(body.get("suite_root").getAsString()).isEmpty();
+    }
+
+    @Test
+    void thereIsNoWrapperFolderByDefaultAndAnUnknownFeatureFallsBackToGeneral() {
+        ScenarioRecord known = record("API-011", "PASSED", 1, null, "@tc:API-011");
+        ScenarioRecord unknown = new ScenarioRecord("API-012", "n", "", List.of("@tc:API-012"), List.of(), "PASSED", 1, null, null, List.of());
+        JsonObject body = TestDeskPayloads.syncBody(List.of(known, unknown), "", false, false, true);
+        assertThat(body.get("suite_root").getAsString()).isEmpty();
+        assertThat(body.getAsJsonArray("cases").get(0).getAsJsonObject().get("suite").getAsString()).isEqualTo("Posts read");
+        assertThat(body.getAsJsonArray("cases").get(1).getAsJsonObject().get("suite").getAsString()).isEqualTo("General");
     }
 
     @Test

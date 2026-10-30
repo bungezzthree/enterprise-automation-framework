@@ -31,6 +31,7 @@ import java.util.function.BiConsumer;
 public final class TestDeskReporter {
 
     /** @param payloadDir where the JSON bodies that are sent are also saved for replay; null to skip */
+    /** @param suiteRoot optional folder above the module suites; empty means test cases go straight into their module suite */
     public record Settings(String project, String baseUrl, String suiteRoot, boolean syncSpec, boolean autoCreate, boolean dryRun,
                            String evidenceMode, long evidenceMaxBytes, Path payloadDir) {
     }
@@ -64,7 +65,7 @@ public final class TestDeskReporter {
         }
 
         boolean resultsMayCreate = settings.autoCreate() && !settings.syncSpec();
-        JsonObject body = TestDeskPayloads.resultsBody(records, run, settings.dryRun(), resultsMayCreate);
+        JsonObject body = TestDeskPayloads.resultsBody(records, run, settings.dryRun(), resultsMayCreate, settings.suiteRoot());
         savePayload("results", run, body);
         JsonObject results = client.recordResults(settings.project(), body);
         int unmatched = logResults(results, run);

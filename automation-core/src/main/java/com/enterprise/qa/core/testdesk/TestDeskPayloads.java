@@ -152,8 +152,8 @@ public final class TestDeskPayloads {
                 c.addProperty("case_key", r.key());
             }
             c.addProperty("title", r.name());
-            if (withSuite && r.feature() != null && !r.feature().isBlank()) {
-                c.addProperty("suite", r.feature());
+            if (withSuite) {
+                c.addProperty("suite", suiteOf(r));
             }
             priority(r.tags()).ifPresent(p -> c.addProperty("priority", p));
             String tags = tags(r.tags());
@@ -174,14 +174,14 @@ public final class TestDeskPayloads {
 
     /** Body for {@code POST /api/projects/{prefix}/automation/results}; cases are created by the spec sync, not here. */
     public static JsonObject resultsBody(List<ScenarioRecord> records, RunContext run, boolean dryRun) {
-        return resultsBody(records, run, dryRun, false);
+        return resultsBody(records, run, dryRun, false, "");
     }
 
     /**
      * Same, with {@code autoCreateCases} as a fallback for runs without a spec sync: TestDesk then creates a missing
      * test case from the title, tags and priority carried by each result.
      */
-    public static JsonObject resultsBody(List<ScenarioRecord> records, RunContext run, boolean dryRun, boolean autoCreateCases) {
+    public static JsonObject resultsBody(List<ScenarioRecord> records, RunContext run, boolean dryRun, boolean autoCreateCases, String suiteRoot) {
         JsonArray results = new JsonArray();
         for (ScenarioRecord r : records) {
             JsonObject item = new JsonObject();
@@ -198,6 +198,7 @@ public final class TestDeskPayloads {
             tagValue(r.tags(), "@defect:").ifPresent(v -> item.addProperty("defect_ref", v));
             if (autoCreateCases) {
                 item.addProperty("title", r.name());
+                item.addProperty("suite", suiteOf(r));
                 String tags = tags(r.tags());
                 if (!tags.isEmpty()) {
                     item.addProperty("tags", tags);
@@ -222,9 +223,17 @@ public final class TestDeskPayloads {
         }
         body.addProperty("run_id", run.runId());
         body.addProperty("auto_create_cases", autoCreateCases);
+        if (autoCreateCases) {
+            body.addProperty("suite_root", suiteRoot == null ? "" : suiteRoot);
+        }
         body.addProperty("dry_run", dryRun);
         body.add("results", results);
         return body;
+    }
+
+    /** Suite (module) of a new test case: the feature name, or "General" when unknown. */
+    static String suiteOf(ScenarioRecord r) {
+        return r.feature() == null || r.feature().isBlank() ? "General" : r.feature();
     }
 
     /** {@code classpath:features/posts_read.feature} to {@code "Posts read"}. */
