@@ -1,6 +1,8 @@
 package com.enterprise.qa.core.steps.api;
 
 import com.enterprise.qa.core.api.ApiContext;
+import com.enterprise.qa.core.api.Redaction;
+import com.enterprise.qa.core.config.Config;
 import io.cucumber.java.After;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
@@ -11,6 +13,7 @@ import io.restassured.response.Response;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,11 +36,13 @@ public class CommonApiSteps {
 
     @When("I send a {word} request to {string}")
     public void sendRequest(String method, String path) {
+        api.requestSummary(Redaction.describeRequest(method, path, api.queryParams(), null));
         api.response(api.client().send(method, path, api.queryParams(), null));
     }
 
     @When("I send a {word} request to {string} with body:")
     public void sendRequestWithBody(String method, String path, String body) {
+        api.requestSummary(Redaction.describeRequest(method, path, api.queryParams(), body));
         api.response(api.client().send(method, path, api.queryParams(), body));
     }
 
@@ -94,16 +99,24 @@ public class CommonApiSteps {
         assertThat(api.response().time()).as("response time (ms)").isLessThan(maxMs);
     }
 
+    /**
+     * Attaches the last request and response as test evidence. {@code evidence.mode}: {@code none},
+     * {@code failed} (default, only failed scenarios) or {@code all}. Secrets are masked.
+     */
     @After
-    public void attachLastResponse(Scenario scenario) {
-        if (scenario.isFailed()) {
-            try {
-                Response r = api.response();
-                String dump = "HTTP " + r.statusCode() + "\n" + r.headers() + "\n\n" + r.asPrettyString();
-                scenario.attach(dump.getBytes(StandardCharsets.UTF_8), "text/plain", "last-response");
-            } catch (IllegalStateException ignored) {
-                // failed before any request was sent
-            }
+    public void attachExchange(Scenario scenario) {
+        String mode = Config.get("evidence.mode", "failed").toLowerCase(Locale.ROOT);
+        if (mode.equals("none") || !(scenario.isFailed() || mode.equals("all"))) {
+            return;
+        }
+        try {
+            Response r = api.response();
+            String dump = "REQUEST\n" + api.requestSummary()
+                    + "\n\nRESPONSE\nHTTP " + r.statusCode() + (r.contentType() == null ? "" : "  " + r.contentType())
+                    + "  (" + r.time() + " ms)\n\n" + Redaction.mask(r.asPrettyString());
+            scenario.attach(dump.getBytes(StandardCharsets.UTF_8), "text/plain", "api-exchange");
+        } catch (IllegalStateException ignored) {
+            // no request was sent in this scenario
         }
     }
 

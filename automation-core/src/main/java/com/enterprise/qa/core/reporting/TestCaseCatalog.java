@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Reads the project's full test-case inventory (manual and automated), normally exported from TestLink.
+ * Reads the project's full test-case inventory (manual and automated), normally exported from the test management tool (TestDesk).
  * The catalog is what gives "automation coverage" a denominator.
  *
  * <pre>

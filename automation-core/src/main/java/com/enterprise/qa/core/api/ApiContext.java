@@ -11,6 +11,16 @@ public class ApiContext {
     private final ApiClient client = new ApiClient();
     private final Map<String, String> queryParams = new LinkedHashMap<>();
     private Response response;
+    private String requestSummary = "(no request was sent)";
+
+    /** Readable, secret-masked description of the last request; used as test evidence. */
+    public String requestSummary() {
+        return requestSummary;
+    }
+
+    public void requestSummary(String summary) {
+        this.requestSummary = summary;
+    }
 
     public ApiClient client() {
         return client;
