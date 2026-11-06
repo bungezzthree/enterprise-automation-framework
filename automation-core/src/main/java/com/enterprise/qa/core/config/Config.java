@@ -39,6 +39,26 @@ public final class Config {
         return isBlank(value) ? null : value.trim();
     }
 
+    /**
+     * All settings whose key starts with {@code prefix}, with the prefix removed. System properties win over the
+     * properties files. Used for open-ended groups such as extra Appium capabilities ({@code mobile.cap.*}).
+     */
+    public static java.util.Map<String, String> withPrefix(String prefix) {
+        java.util.Map<String, String> out = new java.util.TreeMap<>();
+        for (String name : FILE_PROPS.stringPropertyNames()) {
+            if (name.startsWith(prefix)) {
+                out.put(name.substring(prefix.length()), FILE_PROPS.getProperty(name).trim());
+            }
+        }
+        for (String name : System.getProperties().stringPropertyNames()) {
+            if (name.startsWith(prefix)) {
+                out.put(name.substring(prefix.length()), System.getProperty(name).trim());
+            }
+        }
+        out.values().removeIf(String::isBlank);
+        return out;
+    }
+
     public static String get(String key, String defaultValue) {
         String value = get(key);
         return value == null ? defaultValue : value;

@@ -10,15 +10,16 @@ automation, plus a **Quality Metrics Dashboard** that every automation project r
 | Web pilot - 10 UI tests on [Sauce Demo](https://www.saucedemo.com) | `web-tests/` | ✅ 10/10 passing (Playwright and Selenium) |
 | Quality Metrics Dashboard | `dashboard/` | ✅ http://localhost:3000 |
 | Jenkins pipeline | `Jenkinsfile` | ✅ provided (not run against a live Jenkins yet) |
-| Mobile (Appium) | `automation-core/.../mobile` | Driver factory ready; pilot is phase 2 |
+| Android pilot - 10 UI tests on the [Swag Labs sample app](https://github.com/saucelabs/sample-app-mobile) (phase 2.1) | `android-tests/` | ✅ 10/10 passing on a headless emulator; windowed emulator and real device supported, see [docs/android-setup.md](docs/android-setup.md) |
 
 ```
-┌────────────┐   ┌────────────┐   ┌──────────────┐
-│ api-tests  │   │ web-tests  │   │ mobile-tests │  (phase 2)
-│ .feature   │   │ .feature   │   │ .feature     │
-└─────┬──────┘   └─────┬──────┘   └──────┬───────┘
-      └───────── automation-core ────────┘
-        Config · ApiClient · UiDriver (Playwright | Selenium) · MobileDriverFactory (Appium)
+┌────────────┐   ┌────────────┐   ┌───────────────┐
+│ api-tests  │   │ web-tests  │   │ android-tests │
+│ .feature   │   │ .feature   │   │ .feature      │
+└─────┬──────┘   └─────┬──────┘   └───────┬───────┘
+      └───────── automation-core ─────────┘
+        Config · ApiClient · UiDriver (Playwright | Selenium)
+        Mobile: emulator / headless / real device + Appium (AndroidRuntime, MobileSession)
         DbResultPublisher ──► results DB (SQLite / JDBC) ◄── dashboard (Node.js)
         TestLinkResultListener ──► TestLink (optional)
 ```
@@ -173,11 +174,20 @@ testlink.build=<build name>
 > The XML-RPC client follows TestLink 1.9.x's documented API but hasn't been run against a live TestLink instance yet.
 > Verify it in your environment before relying on it.
 
-## Mobile (phase 2)
+## Android (phase 2.1)
 
-`MobileDriverFactory` already builds Appium 2 drivers (`UiAutomator2` for Android, `XCUITest` for iOS) from config:
-`mobile.platform`, `appium.server.url`, `mobile.device.name`, `mobile.platform.version`, `mobile.app`, `mobile.udid`.
-A mobile pilot becomes a new module shaped like `web-tests` with `project.type=MOBILE`, and the dashboard picks it up with no changes.
+`automation-core` runs Android tests on an **emulator**, a **headless emulator** or a **real device**, and starts what is
+needed (Appium, the emulator) for you. Pick the target with a Maven profile:
+
+```bash
+.\mvnw.cmd -pl android-tests test                 # emulator with a window (default)
+.\mvnw.cmd -pl android-tests test -Pheadless      # emulator without a window (CI)
+.\mvnw.cmd -pl android-tests test -Pdevice        # physical phone over USB / Wi-Fi
+```
+
+Prerequisites per OS (Windows, macOS, Linux), creating an AVD, connecting a phone, CI, running from IntelliJ and every setting
+are in **[docs/android-setup.md](docs/android-setup.md)**. `AndroidDoctor` checks your machine and says what to fix.
+`MobileDriverFactory` still builds iOS (XCUITest) drivers; an iOS pilot is not part of this phase.
 
 ## Adding a new automation project
 
@@ -192,6 +202,7 @@ A mobile pilot becomes a new module shaped like `web-tests` with `project.type=M
 automation-core/   framework library (config, web/mobile/api drivers, reporting, TestLink, reusable steps)
 api-tests/         API pilot: features/, contracts/ (JSON Schema), testcases/catalog.csv
 web-tests/         Web pilot: features/, pages/ (page objects), steps/, testcases/catalog.csv
+android-tests/     Android pilot: features/, screens/ (screen objects), steps/, testcases/catalog.csv
 dashboard/         Node.js server (no npm dependencies) + static HTML/CSS/JS front end
 results/           SQLite results DB (git-ignored)
 Jenkinsfile        CI orchestration

@@ -23,7 +23,7 @@ public record RunInfo(Instant startedAt, String environment, String triggerSourc
     private static String engineLabel() {
         return switch (Config.get("project.type", "WEB").toUpperCase()) {
             case "API" -> "rest-assured";
-            case "MOBILE" -> "appium/" + Config.get("mobile.platform", "android");
+            case "MOBILE" -> "appium/" + Config.get("mobile.platform", "android") + " (" + Config.get("mobile.mode", "emulator") + ")";
             default -> Config.get("web.engine", "playwright") + "/" + Config.get("browser", "chromium")
                     + (Config.getBool("headless", true) ? " (headless)" : " (headed)");
         };

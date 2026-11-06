@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.enterprise.qa</groupId>
+        <artifactId>enterprise-automation-framework</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>android-tests</artifactId>
+    <name>Android Automation Pilot (Swag Labs mobile app)</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.enterprise.qa</groupId>
+            <artifactId>automation-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables combine.children="append">
+                        <mobile.mode>${mobile.mode}</mobile.mode>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+        Where the tests run (mobile.mode). -Dmobile.xxx=... on the command line still overrides everything.
+          mvnw -pl android-tests test                emulator, with a window (default)
+          mvnw -pl android-tests test -Pheadless     emulator without a window (CI, background runs)
+          mvnw -pl android-tests test -Pdevice       a physical phone connected by USB or Wi-Fi
+          mvnw -pl android-tests test -Premote       a device farm or remote Appium server (set appium.server.url)
+    -->
+    <profiles>
+        <profile>
+            <id>emulator</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <mobile.mode>emulator</mobile.mode>
+            </properties>
+        </profile>
+        <profile>
+            <id>headless</id>
+            <properties>
+                <mobile.mode>headless</mobile.mode>
+            </properties>
+        </profile>
+        <profile>
+            <id>device</id>
+            <properties>
+                <mobile.mode>device</mobile.mode>
+            </properties>
+        </profile>
+        <profile>
+            <id>remote</id>
+            <properties>
+                <mobile.mode>remote</mobile.mode>
+            </properties>
+        </profile>
+    </profiles>
+</project>

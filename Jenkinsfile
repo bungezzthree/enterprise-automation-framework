@@ -5,11 +5,13 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'SUITE', choices: ['all', 'api', 'web'], description: 'Which automation project(s) to run')
+        choice(name: 'SUITE', choices: ['all', 'api', 'web', 'android'], description: 'Which automation project(s) to run')
         string(name: 'TAGS', defaultValue: '', description: 'Cucumber tag expression, e.g. "@sanity" or "@regression and not @wip" (empty = everything)')
         choice(name: 'TEST_ENV', choices: ['local', 'staging', 'production'], description: 'Loads config/<env>.properties')
         choice(name: 'WEB_ENGINE', choices: ['playwright', 'selenium'], description: 'Browser automation engine for web suites')
         choice(name: 'RUN_MODE', choices: ['headless', 'chrome'], description: 'Web suites: headless Chromium, or a visible Google Chrome window (agent needs Chrome and a desktop session)')
+        choice(name: 'ANDROID_MODE', choices: ['headless', 'emulator', 'device'], description: 'Android suite: emulator without a window (CI default), with a window, or a physical device on the agent (needs the Android SDK, Appium and an AVD on the agent: docs/android-setup.md)')
+        string(name: 'ANDROID_APP', defaultValue: '', description: 'Path or URL of the .apk to test (empty = the one in android-tests config)')
         string(name: 'RESULTS_DB_URL', defaultValue: '', description: 'JDBC URL of the dashboard DB (empty = <workspace>/results/automation-results.db)')
         booleanParam(name: 'TESTLINK', defaultValue: false, description: 'Also push results to TestLink (needs TESTLINK_DEVKEY credential)')
     }
@@ -51,6 +53,17 @@ pipeline {
                             mvn("-B -pl web-tests test ${commonArgs()} -Dweb.engine=${params.WEB_ENGINE} -P${params.RUN_MODE}")
                         }
                     }
+                }
+            }
+        }
+
+        // Android needs the machine's CPU for the emulator, so it does not run alongside the Web browsers.
+        stage('Android') {
+            when { expression { params.SUITE in ['all', 'android'] } }
+            steps {
+                script {
+                    def app = params.ANDROID_APP?.trim() ? " \"-Dmobile.app=${params.ANDROID_APP.trim()}\"" : ''
+                    mvn("-B -pl android-tests test ${commonArgs()} -P${params.ANDROID_MODE}${app}")
                 }
             }
         }

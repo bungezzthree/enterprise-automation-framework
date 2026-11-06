@@ -209,6 +209,7 @@ public class TestDeskResultListener implements ConcurrentEventListener {
             case "text/plain" -> ".txt";
             case "text/html" -> ".html";
             case "application/json" -> ".json";
+            case "application/xml", "text/xml" -> ".xml";
             case "application/pdf" -> ".pdf";
             case "video/mp4" -> ".mp4";
             case "video/webm" -> ".webm";

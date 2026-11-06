@@ -15,6 +15,7 @@
         <module>automation-core</module>
         <module>api-tests</module>
         <module>web-tests</module>
+        <module>android-tests</module>
     </modules>
 
     <properties>

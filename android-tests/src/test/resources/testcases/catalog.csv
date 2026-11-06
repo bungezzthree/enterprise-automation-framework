@@ -1,0 +1,14 @@
+tc_key,title,categories,automated,priority
+AND-001,Standard user logs in successfully,regression|sanity,true,high
+AND-002,Locked-out user is refused,regression,true,high
+AND-003,Wrong password is rejected,regression,true,medium
+AND-004,Product list shows name and price,regression|sanity,true,high
+AND-005,Sort products by price from low to high,newfeature,true,medium
+AND-006,Add a product to the cart,regression|sanity,true,high
+AND-007,Remove a product from the cart,regression,true,medium
+AND-008,Complete a purchase end to end,regression|sanity,true,high
+AND-009,First name is required at checkout,newfeature,true,medium
+AND-010,Logout from the menu returns to the login screen,regression|sanity,true,medium
+AND-011,Rotate the device on the product list,regression,false,low
+AND-012,Return to the app after it was in the background,regression,false,medium
+AND-013,Open a product detail page from the list,newfeature,false,low
