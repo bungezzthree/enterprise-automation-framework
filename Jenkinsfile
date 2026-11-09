@@ -13,7 +13,9 @@ pipeline {
         choice(name: 'ANDROID_MODE', choices: ['headless', 'emulator', 'device'], description: 'Android suite: emulator without a window (CI default), with a window, or a physical device on the agent (needs the Android SDK, Appium and an AVD on the agent: docs/android-setup.md)')
         string(name: 'ANDROID_APP', defaultValue: '', description: 'Path or URL of the .apk to test (empty = the one in android-tests config)')
         string(name: 'RESULTS_DB_URL', defaultValue: '', description: 'JDBC URL of the dashboard DB (empty = <workspace>/results/automation-results.db)')
-        booleanParam(name: 'TESTLINK', defaultValue: false, description: 'Also push results to TestLink (needs TESTLINK_DEVKEY credential)')
+        booleanParam(name: 'TESTDESK', defaultValue: false, description: 'Also send results and evidence to TestDesk (needs the TESTDESK_TOKEN Secret text credential and TESTDESK_URL in the Jenkins/agent environment)')
+        choice(name: 'TESTDESK_ENV', choices: ['SIT', 'UAT'], description: 'TestDesk environment of the test plan (used when the plan is created)')
+        string(name: 'TESTDESK_PLAN', defaultValue: '', description: 'TestDesk test plan name, e.g. "Release 2.4" (empty = rolling plan "EAF <project> <env>")')
     }
 
     triggers {
@@ -85,16 +87,20 @@ def commonArgs() {
     if (params.RESULTS_DB_URL?.trim()) {
         args += " \"-Dresults.db.url=${params.RESULTS_DB_URL.trim()}\""
     }
-    if (params.TESTLINK) {
-        args += " -Dtestlink.enabled=true -Dtestlink.build=jenkins-${env.BUILD_NUMBER}"
+    if (params.TESTDESK) {
+        args += " -Dtestdesk.enabled=true -Dtestdesk.environment=${params.TESTDESK_ENV}"
+        if (params.TESTDESK_PLAN?.trim()) {
+            args += " \"-Dtestdesk.plan.name=${params.TESTDESK_PLAN.trim()}\""
+        }
     }
     return args
 }
 
 def mvn(String args) {
     def run = { -> isUnix() ? sh("./mvnw ${args}") : bat("mvnw.cmd ${args}") }
-    if (params.TESTLINK) {
-        withCredentials([string(credentialsId: 'TESTLINK_DEVKEY', variable: 'TESTLINK_DEVKEY')]) { run() }
+    if (params.TESTDESK) {
+        // Config reads testdesk.token only from env TESTDESK_TOKEN; testdesk.url comes from env TESTDESK_URL on the agent.
+        withCredentials([string(credentialsId: 'TESTDESK_TOKEN', variable: 'TESTDESK_TOKEN')]) { run() }
     } else {
         run()
     }

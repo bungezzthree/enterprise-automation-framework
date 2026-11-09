@@ -12,7 +12,7 @@
 
     <artifactId>automation-core</artifactId>
     <name>Automation Core</name>
-    <description>Shared engine: config, drivers (Playwright/Selenium/Appium), API client, result publishing, TestLink</description>
+    <description>Shared engine: config, drivers (Playwright/Selenium/Appium), API client, result publishing, TestDesk</description>
 
     <dependencies>
         <!-- BDD -->

@@ -5,7 +5,7 @@ automation, plus a **Quality Metrics Dashboard** that every automation project r
 
 | Phase 1 deliverable | Where | Status |
 |---|---|---|
-| Framework core (config, drivers, API client, reporting, TestLink) | `automation-core/` | ✅ |
+| Framework core (config, drivers, API client, reporting, TestDesk) | `automation-core/` | ✅ |
 | API pilot - 10 contract tests on [JSONPlaceholder](https://jsonplaceholder.typicode.com) | `api-tests/` | ✅ 10/10 passing |
 | Web pilot - 10 UI tests on [Sauce Demo](https://www.saucedemo.com) | `web-tests/` | ✅ 10/10 passing (Playwright and Selenium) |
 | Quality Metrics Dashboard | `dashboard/` | ✅ http://localhost:3000 |
@@ -21,7 +21,7 @@ automation, plus a **Quality Metrics Dashboard** that every automation project r
         Config · ApiClient · UiDriver (Playwright | Selenium)
         Mobile: emulator / headless / real device + Appium (AndroidRuntime, MobileSession)
         DbResultPublisher ──► results DB (SQLite / JDBC) ◄── dashboard (Node.js)
-        TestLinkResultListener ──► TestLink (optional)
+        TestDeskResultListener ──► TestDesk: test cases, results, evidence (optional)
 ```
 
 ---
@@ -71,7 +71,8 @@ up to 3 Chrome windows. The dashboard's run history labels each run `(headless)`
 | `selenium.grid.url` | - | Run Selenium on a Grid instead of a local browser |
 | `results.db.url` | `jdbc:sqlite:<repo>/results/automation-results.db` | Where results are published |
 | `results.db.enabled` | `true` | `false` for throw-away runs that shouldn't affect metrics |
-| `testlink.enabled` | `false` | Push results to TestLink (see below) |
+| `testdesk.enabled` | `false` | Send test cases, results and evidence to TestDesk (see below) |
+| `evidence.mode` | `failed` | Evidence attached to scenarios and sent to TestDesk: `none`, `failed`, `all` |
 
 Examples:
 
@@ -87,7 +88,7 @@ Every run also produces Cucumber HTML/JSON/JUnit reports in `<module>/target/cuc
 
 ## Conventions every automation project follows
 
-**Tags = the link between a scenario, TestLink and the dashboard.**
+**Tags = the link between a scenario, TestDesk and the dashboard.**
 
 ```gherkin
 @tc:WEB-009 @regression @sanity @priority:high
@@ -96,21 +97,25 @@ Scenario: Complete a purchase end to end
 
 | Tag | Meaning |
 |---|---|
-| `@tc:<ID>` | Test case ID; must match the catalog / TestLink external ID. **Required.** |
+| `@tc:<ID>` | Test case ID; must match the catalog and the TestDesk `case_key` (TestDesk project prefix `API`, `WEB`, `AND`). **Required.** |
 | `@regression` | Part of the regression suite |
 | `@sanity` | Part of the sanity suite. **Sanity is a subset of regression**, so `@sanity` implies regression |
 | `@newfeature` | Covers a new feature (not yet in regression) |
-| `@priority:<high/medium/low>` | Optional |
-| `@testlink:<externalId>` | Optional override when the TestLink ID differs from `@tc` |
+| `@priority:<critical/high/medium/low>` | Optional; sent to TestDesk as the priority |
+| `@req:<ref>` | Optional requirement reference (BRD/FSD), sent to TestDesk as `requirement_ref` |
+| `@defect:<ref>` | Optional defect reference, sent with the TestDesk result as `defect_ref` |
 
 **Test case catalog** (`src/test/resources/testcases/catalog.csv`): the project's full inventory, manual *and*
-automated, as exported from TestLink. It provides the denominator for automation coverage. Each run syncs it to
+automated, kept in the repository. It provides the denominator for automation coverage. Each run syncs it to
 the DB, and any scenario that executes is marked automated.
 
 ```csv
-tc_key,title,categories,automated,priority,testlink_id
-WEB-011,Logout from the side menu returns to login,regression|sanity,false,high,EAF-WEB-11
+tc_key,title,categories,automated,priority
+WEB-011,Logout from the side menu returns to login,regression|sanity,false,high
 ```
+
+Columns are read by position. Older catalogs have a sixth, deprecated legacy-ID column; it's still accepted (and stored in
+the DB) but is not used by TestDesk and can be left empty or dropped.
 
 **Project identity** (`src/test/resources/config/default.properties`): `project.key`, `project.name`,
 `project.type` (API / WEB / MOBILE). This is what the dashboard groups by.
@@ -147,32 +152,71 @@ dashboard's `node:sqlite` for `pg`. *(Not done or tested in phase 1.)*
 
 ## Jenkins
 
-`Jenkinsfile` is a parameterised pipeline: `SUITE` (all/api/web), `TAGS`, `TEST_ENV`, `WEB_ENGINE`, `RUN_MODE` (headless/chrome), `RESULTS_DB_URL`,
-`TESTLINK`. It builds the core, runs the API and Web suites **in parallel**, publishes JUnit results, archives the Cucumber reports,
+`Jenkinsfile` is a parameterised pipeline: `SUITE` (all/api/web/android), `TAGS`, `TEST_ENV`, `WEB_ENGINE`, `RUN_MODE` (headless/chrome), `ANDROID_MODE`, `ANDROID_APP`,
+`RESULTS_DB_URL`, `TESTDESK`, `TESTDESK_ENV` (SIT/UAT), `TESTDESK_PLAN`. It builds the core, runs the API and Web suites **in parallel**, publishes JUnit results, archives the Cucumber reports,
 and runs a nightly regression (`H 2 * * 1-5`). It works on Linux (`sh`) and Windows (`bat`) agents.
 
 Setup: create a Pipeline job from SCM pointing at this repo, add a JDK 21 tool named `jdk21`, and set `RESULTS_DB_URL`
 to the database the dashboard reads (for SQLite on the same machine, e.g. `jdbc:sqlite:C:/qa/automation-results.db`, then start the
 dashboard with `DB_PATH=C:/qa/automation-results.db`). Runs record `trigger_source=JENKINS` and the build number.
 
-## TestLink
+To report to TestDesk from Jenkins: add a *Secret text* credential with ID `TESTDESK_TOKEN` (the pipeline binds it to the env var
+`TESTDESK_TOKEN`), set `TESTDESK_URL` in the Jenkins global or agent environment, then tick `TESTDESK`. The job passes
+`-Dtestdesk.enabled=true -Dtestdesk.environment=<TESTDESK_ENV>` and, when `TESTDESK_PLAN` is filled in, `-Dtestdesk.plan.name=<TESTDESK_PLAN>`.
 
-Two integration points:
+## TestDesk
 
-1. **Inventory → dashboard:** export each test suite from TestLink and keep it as `testcases/catalog.csv` (see format above).
-2. **Results → TestLink:** `TestLinkResultListener` calls `tl.reportTCResult` over XML-RPC after each scenario
-   (passed → `p`, failed → `f`, pending → `b` blocked).
+TestDesk is the system of record for test cases, execution results and **test evidence** (SIT/UAT). `TestDeskResultListener`
+(registered as a Cucumber plugin in each module's `junit-platform.properties`) collects every scenario and, at the end of the run:
+
+1. syncs the specification (title, tags, priority, Gherkin steps) to `PUT /api/projects/{prefix}/automation/cases`;
+   test cases that don't exist in TestDesk yet are created in a suite named after the feature (`testdesk.auto.create`);
+2. sends the results to `POST /api/projects/{prefix}/automation/results` (passed, failed, blocked for undefined/pending, skipped);
+3. uploads evidence per test case (screenshots, API request/response) according to `evidence.mode`;
+4. logs a summary with a link to the test plan.
+
+Results are sent once per run, so parallel execution is safe. Scenarios without `@tc` are skipped with a warning.
 
 ```properties
-testlink.enabled=true
-testlink.url=http://<testlink-host>/lib/api/xmlrpc/v1/xmlrpc.php
-testlink.testplan.id=<plan id>
-testlink.build=<build name>
-# devkey: set env var TESTLINK_DEVKEY (never commit it)
+testdesk.enabled=true
+testdesk.url=http://<testdesk-host>:3100     # or env TESTDESK_URL
+testdesk.project=API                         # TestDesk project prefix
+testdesk.environment=SIT                     # SIT or UAT
+# token: set env var TESTDESK_TOKEN (never commit it)
 ```
 
-> The XML-RPC client follows TestLink 1.9.x's documented API but hasn't been run against a live TestLink instance yet.
-> Verify it in your environment before relying on it.
+| Key | Default | Purpose |
+|---|---|---|
+| `testdesk.enabled` | `false` | Master switch |
+| `testdesk.url` | - | TestDesk base URL, e.g. `http://localhost:3100` |
+| `testdesk.token` | env `TESTDESK_TOKEN` | API token; only ever from the environment |
+| `testdesk.project` | - | TestDesk project prefix (`API`, `WEB`, `AND`) |
+| `testdesk.environment` | `SIT` | `SIT` or `UAT`, used when the plan is created |
+| `testdesk.plan.name` | `EAF <project.key> <env>` | Rolling plan name; set per build for a release, e.g. `Release 2.4 #123` |
+| `testdesk.run.id` | `BUILD_TAG`, or `local-<user>-<time>` | Idempotency key: re-sending the same run doesn't duplicate results |
+| `testdesk.build` / `testdesk.ci.url` | `BUILD_NUMBER` / `BUILD_URL` | Shown on each execution |
+| `testdesk.suite.root` | *(empty)* | Optional folder above the module suites |
+| `testdesk.auto.create` | `true` | Create test cases missing in TestDesk; `false` only reports them. Needs `testdesk.sync.spec=true` for steps |
+| `testdesk.sync.spec` | `true` | `false` when titles and steps are maintained by hand in TestDesk |
+| `testdesk.dry.run` | `false` | Passes `dry_run` to the API: see the outcome without saving |
+| `evidence.mode` | `failed` | `none`, `failed`, `all` (UAT usually wants `all`) |
+| `testdesk.evidence.max.mb` | `20` | Larger files are skipped with a warning (TestDesk limit: 25 MB) |
+
+**TestDesk problems never fail the test run.** They are logged as warnings:
+
+| Situation | Behaviour |
+|---|---|
+| TestDesk down, token wrong or expired (401) | Warning; the run passes/fails on its test results; payloads are saved in `<module>/target/testdesk/` |
+| Test case not in TestDesk and `testdesk.auto.create=false` | Reported in the log; import the catalog or turn auto-create on |
+| Plan already closed (409) | Warning; use a new plan name (`testdesk.plan.name`) |
+| Scenario without `@tc` | Skipped with a warning |
+| Results re-sent with the same run ID | Not duplicated |
+| Evidence upload fails | Warning per test case; the result is already recorded |
+
+A saved payload can be re-sent by hand, e.g.
+`curl -X POST -H "Authorization: Bearer $TESTDESK_TOKEN" -H "Content-Type: application/json" --data @api-tests/target/testdesk/results-<run>.json $TESTDESK_URL/api/projects/API/automation/results`.
+
+Design and decisions: [docs/design-testdesk-integration.md](docs/design-testdesk-integration.md).
 
 ## Android (phase 2.1)
 
@@ -193,13 +237,13 @@ are in **[docs/android-setup.md](docs/android-setup.md)**. `AndroidDoctor` check
 
 1. Copy `api-tests/` or `web-tests/`, rename the artifactId, and add it to `<modules>` in the root `pom.xml`.
 2. Set `project.key/name/type` in `config/default.properties`.
-3. Replace `testcases/catalog.csv` with the TestLink export and write features tagged `@tc:<ID>` plus category tags.
+3. Replace `testcases/catalog.csv` with the project's test case inventory, set `testdesk.project` to its TestDesk prefix, and write features tagged `@tc:<ID>` plus category tags.
 4. Run it. The project appears on the dashboard automatically.
 
 ## Repository layout
 
 ```
-automation-core/   framework library (config, web/mobile/api drivers, reporting, TestLink, reusable steps)
+automation-core/   framework library (config, web/mobile/api drivers, reporting, TestDesk, reusable steps)
 api-tests/         API pilot: features/, contracts/ (JSON Schema), testcases/catalog.csv
 web-tests/         Web pilot: features/, pages/ (page objects), steps/, testcases/catalog.csv
 android-tests/     Android pilot: features/, screens/ (screen objects), steps/, testcases/catalog.csv
