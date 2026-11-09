@@ -24,6 +24,8 @@ automation, plus a **Quality Metrics Dashboard** that every automation project r
         TestLinkResultListener ──► TestLink (optional)
 ```
 
+📐 **[Architecture & diagrams](docs/architecture.md)** · 🚀 **[Deployment guide](docs/deployment-guide.md)** (local, QA server, Jenkins, dashboard service, TestDesk)
+
 ---
 
 ## Quick start (local)
@@ -204,6 +206,7 @@ api-tests/         API pilot: features/, contracts/ (JSON Schema), testcases/cat
 web-tests/         Web pilot: features/, pages/ (page objects), steps/, testcases/catalog.csv
 android-tests/     Android pilot: features/, screens/ (screen objects), steps/, testcases/catalog.csv
 dashboard/         Node.js server (no npm dependencies) + static HTML/CSS/JS front end
+docs/              architecture.md, deployment-guide.md, android-setup.md, TestDesk design
 results/           SQLite results DB (git-ignored)
 Jenkinsfile        CI orchestration
 ```
